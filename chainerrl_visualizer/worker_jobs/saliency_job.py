@@ -2,8 +2,8 @@ import os
 
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter
-from scipy.misc import imresize
-from scipy.misc import imsave
+from PIL import Image
+from imageio import imwrite
 import jsonlines
 
 from chainerrl_visualizer.utils import generate_random_string
@@ -11,6 +11,15 @@ from chainerrl_visualizer.config import (
     DISCRETE_ACTION_VALUE, DISTRIBUTIONAL_DISCRETE_ACTION_VALUE, SOFTMAX_DISTRIBUTION)
 
 ROLLOUT_LOG_FILE_NAME = 'rollout_log.jsonl'
+
+def imresize(image, size):
+    # Image.resize((width, height))
+    # scipy.misc.imresize(height, width)
+    return np.array(Image.fromarray(image).resize(tuple(reversed(size)), resample=2))
+
+
+def imsave(path, image):
+    imwrite(path, image)
 
 
 def create_and_save_saliency_images(agent, profile, rollout_path, from_step, to_step,
@@ -61,7 +70,7 @@ def _saliency_on_base_image(saliency, base_img, fudge_factor, channel=2, sigma=0
     # base_img shape is intended to be (height, width, channel)
     size = base_img.shape[0:2]  # height, width
     saliency_max = saliency.max()
-    saliency = imresize(saliency, size=size, interp="bilinear").astype(np.float32)
+    saliency = imresize(saliency, size=size).astype(np.float32)
 
     if sigma != 0:
         saliency = gaussian_filter(saliency, sigma=sigma)
@@ -95,7 +104,7 @@ def _score_frame_discrete_qvalues(agent, input_np_array, radius=5, density=10):
             scores[int(i / density), int(j / density)] =\
                 np.power(qvalues - perturbated_qvalues, 2).sum()
     scores_max = scores.max()
-    scores = imresize(scores, size=[height, width], interp="bilinear").astype(np.float32)
+    scores = imresize(scores, size=[height, width]).astype(np.float32)
 
     return scores_max * scores / scores.max()
 
@@ -132,9 +141,9 @@ def _score_frame_softmax_policy_and_state_value(
     state_value_pmax = state_value_score.max()
 
     softmax_policy_score = imresize(
-        softmax_policy_score, size=[height, width], interp='bilinear').astype(np.float32)
+        softmax_policy_score, size=[height, width]).astype(np.float32)
     state_value_score = imresize(
-        state_value_score, size=[height, width], interp='bilinear').astype(np.float32)
+        state_value_score, size=[height, width]).astype(np.float32)
 
     softmax_policy_score = softmax_policy_pmax * softmax_policy_score / softmax_policy_score.max()
     state_value_score = state_value_pmax * state_value_score / state_value_score.max()
